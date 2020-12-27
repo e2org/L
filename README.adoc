@@ -1,0 +1,51 @@
+The world's first DDD toolkit (Death-Driven-Development).
+
+[source,javascript]
+----
+//        How to Use It        //
+//        ------I------        //
+                               //
+// [1]                         //
+L(`.human[name="matsuda"]`)    //          ₂e²e²e²e²e₂₂             ₂e²e²    ₂e²e²e²e²
+  .on(`written`, event =>      //       ₂e²e²e²e²e²e²e²e²e₂₂₂₂₂₂e²e²e²   ₂e²e²e²
+    L(event.target).rem());    //      ₂e²e²e²e²e²e²e²e²e²e²e²e²e²e²   e²e²e²e²
+                               //    ₂e²²²²²²e²e₂e²e²e²e₂e²e²e²e²²   ₂e²e²e²e²
+// [2]                         //                ²²e²e²²   e²e²e²    e²e²e²e²
+L.state                        //                   ²    ²e²e²e²    ₂e²e²e²e²
+  .load()                      //                      ₂e²e²e²e²    e²e²e²e²e
+  .set({                       //                      e²e²e²e²²    e²e²e²e²e
+    eyes: `purple`,            //                     ₂e²e²e²e²e    e²e²e²e²e₂
+    hair: `neon`,              //                     e²e²e²e²e²    ²e²e²e²e²e
+  })                           //                     e²e²e²e²e²     e²e²e²e²e
+  .write();                    //                     ²e²e²e²e²e     ²e²e²e²e²₂
+window.location.reload();      //                      e²e²e²e²e₂    ²e²e²e²e²e
+L.state.load();                //              ₂₂e²e²e₂e²e²e²e²e₂    ²e²e²e²e²e
+L.state.get(`eyes`);           //           ₂e²e²e²e²e²e²e²e²e²e₂     e²e²e²e²e
+// "purple"                    //                ²e²e²e²e²e²e²e²e     e²e²e²e²e
+L.state.get(`hair`);           //                    ²e²e²e²e²e²e     e²e²e²e²²
+// "neon"                      //                      e²e²e²e²e²    ₂e²e²e²e²
+                               //                       e²e²e²e²²    e²e²e²e²²
+// [3]                         //             ²e²e²e²e²e²e²e²e²e²   ₂e²e²e²e²
+L(`.human[name="mogi"]`)       //                 ²e²e²e²e²e²e²e    e²e²e²²
+  .ani(`opacity`, 40 * 1000)   //                     ²e²e²e²e²²   ₂e²e²e²
+  .rem(); // after 40s         //                       e²e²e²e   ₂e²e²²
+                               //                       e²e²e²   ₂e²e²
+// [4]                         //                      ₂e²e²e  ₂e²e²   ₂₂e²e²e²e₂₂
+L(`.human[name="aizawa"]`)     //                      e²e²² ₂e²e²e₂e²e²e²e²e²e²e²e²e²e₂
+  .ani(`opacity`)              //                    ₂e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e₂
+  .rem(); // after 400ms       //                  ₂e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²₂
+                               //                ₂e²e²e²e²e²²²          ²²²e²e²e²e²e²e²e²e²e²e²
+// [5]                         //              ₂e²e²e²                         ²²e²e²e²e²e²²
+L(`.human[name="ukita"]`)      //           ₂e²e²                                   ²e²e²²
+  .ani(`opacity`, 400 * 1000); //          ²²                                          ²
+// ...                         //
+L(`.human[name="ukita"]`)      //
+  .rem();                      //
+  // after 6 min, 40 sec       //
+----
+
+=== Tenets of DDD
+* Life's short; prototype fast.
+* Nothing's wrong with learning, but things that make you learn their ways assume they'll live longer than you.
+* Toolkits not frameworks -- weapons in your arsenal, not fashions in your wardrobe.
+

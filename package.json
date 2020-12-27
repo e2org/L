@@ -1,0 +1,17 @@
+{
+  "name": "l-toolkit",
+  "version": "0.0.1",
+  "description": "Death-Simple Web Prototyping Toolkit",
+  "scripts": {
+    "build": "prettier --write src && tsc src/*.ts --outDir .",
+    "reset": "rm -rf ./node_modules && rm -rf ./.cache && npm install"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "prettier": "2.2.1",
+    "stylus": "0.54.8",
+    "typescript": "4.1.2"
+  },
+  "author": "Evan Purcer <evanpurcer@gmail.com> (https://e2.gg)",
+  "liscense": "MIT"
+}
