@@ -46,6 +46,6 @@ L(`.human[name="ukita"]`)      //
 
 === Tenets of DDD
 * Life's short; prototype fast.
-* Nothing's wrong with learning, but things that make you learn their ways assume they'll live longer than you.
-* Toolkits not frameworks -- weapons in your arsenal, not fashions in your wardrobe.
+* Nothing's wrong with learning, but things that make you learn too much assume they'll live longer than you.
+* Toolkits not frameworks -- eschew cargo-cults; seek pragmatic tools that adapt to _your_ ways of thinking -- and the domain at hand.
 
