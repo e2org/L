@@ -2,18 +2,60 @@
 
 /// Types /// BEGIN ///
 ///
-type Ltgt = string | HTMLElement | HTMLElement[] | Document | Window;
+enum Easing {
+  EaseInOut = `ease-in-out`,
+  EaseIn = `ease-in`,
+  EaseOut = `ease-out`,
+}
+enum EaseFunc {
+  Linear = `linear`,
+  Quadradic = `quadradic`,
+  Cubic = `cubic`,
+  Quartic = `quartic`,
+  Quintic = `quintic`,
+}
+interface Animation {
+  easing: Easing;
+  easeFunc: EaseFunc;
+  duration: number;
+}
+type Option = boolean | number | Easing | EaseFunc;
+type Ltgt = Lobj | string | HTMLElement | HTMLElement[] | Document | Window;
+interface LsubGet { // allows direct manipulation of element classes & styles
+  cls?: (tgt: Ltgt, key: string) => string | null;
+  sty?: (tgt: Ltgt, key: string) => string | null;
+}
+interface LsubSet { // allows direct manipulation of element classes & styles
+  cls?: (tgt: Ltgt, key: string, val: string) => string;
+  sty?: (tgt: Ltgt, key: string, val: string) => string;
+}
+interface LsubDel { // allows direct manipulation of element classes & styles
+  cls?: (tgt: Ltgt, key: string) => boolean,
+  sty?: (tgt: Ltgt, key: string) => boolean,
+}
+interface LsubCycRnd { // allows direct manipulation of element classes & styles
+  cls?: (tgt: Ltgt, key: string, vals: string[]) => string;
+  sty?: (tgt: Ltgt, key: string, vals: string[]) => string;
+}
+type Lget = LsubGet & ((tgt: Ltgt, key: string) => string | null);
+type Lset = LsubSet & ((tgt: Ltgt, key: string, val: string, ...args: Option[]) => string);
+type Ldel = LsubDel & ((tgt: Ltgt, key: string, ...args: Option[]) => boolean);
+type Lcyc = LsubCycRnd & ((tgt: Ltgt, key: string, vals: string[], ...args: Option[]) => string);
+type Lrnd = LsubCycRnd & ((tgt: Ltgt, key: string, vals: string[], ...args: Option[]) => string);
 interface Lobj {
-  all: () => HTMLElement[];
+  elements: HTMLElement[];
+  all: (requery?: boolean) => HTMLElement[];
   idx: (index: number) => HTMLElement;
-  on: (events: string, fn: Function) => Lobj;
-  hide: () => Lobj;
-  show: () => Lobj;
-  get: (key: string) => string | null;
-  set: (key: string, val: string) => string;
-  del: (key: string) => boolean;
-  cycle: (key: string, vals: string[]) => string;
-  rand: (key: string, vals: string[]) => string;
+  add: (...args: Option[]) => Lobj;
+  rem: (...args: Option[]) => Lobj;
+  on: (events: string, fn: Function, off?: boolean) => Lobj;
+  off: (events: string, fn: Function, on?: boolean) => Lobj;
+  one: (events: string, fn: Function) => Lobj;
+  get: Lget;
+  set: Lset;
+  del: Ldel;
+  cyc: Lcyc;
+  rnd: Lrnd;
 }
 interface LstateConfigEntry {
   default?: string;
@@ -28,10 +70,11 @@ interface LstateAliases {
   [stateKeyAlias: string]: string;
 }
 interface Lstate {
+  /// internal state ///
   params: URLSearchParams;
   config?: LstateConfig;
   aliases?: LstateAliases;
-
+  /// access functions ///
   configure: (config: LstateConfig) => Lstate;
   load: (onLoad?: Function) => Lstate;
   aliased: (key: string) => string;
@@ -53,38 +96,82 @@ interface Lstate {
 ///
 /// Types /// END ///
 
+/// Utils /// BEGIN ///
+///
+const easings: Set<Option> = new Set(Object.values(Easing));
+const easeFuncs: Set<Option> = new Set(Object.values(EaseFunc));
+function parseAnimationArgs(...args: Option[]): Animation {
+  return {
+    easing: args.filter((arg) => easings.has(arg))[0] as Easing || Easing.EaseInOut,
+    easeFunc: args.filter((arg) => easeFuncs.has(arg))[0] as EaseFunc || EaseFunc.Cubic, // default: smooth ease timing
+    duration: args.filter((arg) => Number.isInteger(arg))[0] as number || 0, // default: immediate, no animation
+  };
+}
+///
+/// Utils /// END ///
+
 /// L -- DOM query & manipulation utils /// BEGIN ///
 ///
 function L(tgt: Ltgt): Lobj {
   /// query DOM for an array of elements ///
-  tgt =
-    typeof tgt === `string`
-      ? ((Array.from(
+  const l = {
+    elements: [],
+    all: (requery = false) => {
+      if (requery || !l.elements.length) {
+        const res = typeof tgt !== `string` ? tgt : ((Array.from(
           document.body.querySelectorAll(tgt)
-        ) as unknown) as HTMLElement[])
-      : tgt;
-  tgt = ((!Array.isArray(tgt) ? [tgt] : tgt) as unknown) as HTMLElement[];
-  return {
-    all: () => (tgt as unknown) as HTMLElement[],
-    idx: (index) => tgt[0] || null,
-    on: (...args) => L.on(tgt, ...args),
-    hide: (...args) => L.hide(tgt, ...args),
-    show: (...args) => L.show(tgt, ...args),
-    get: (...args) => L.get(tgt, ...args),
-    set: (...args) => L.set(tgt, ...args),
-    del: (...args) => L.del(tgt, ...args),
-    cycle: (...args) => L.cycle(tgt, ...args),
-    rand: (...args) => L.rand(tgt, ...args),
+        ) as unknown) as HTMLElement[]);
+        l.elements = ((!Array.isArray(res) ? [res] : res) as unknown) as HTMLElement[];
+      }
+      return l.elements;
+    },
+    idx: (index) => l.all()[0] || null,
   };
+  [
+    `get`,
+    `set`,
+    `del`,
+    `cyc`,
+    `rnd`,
+  ].forEach((func) => {
+    l[func] = (...args) => L[func](tgt, ...args);
+    l[func].cls = (...args) => L[func].cls(tgt, ...args);
+    l[func].sty = (...args) => L[func].sty(tgt, ...args);
+  });
+  return {
+    ...l,
+    on:  (...args) => L.on(tgt, ...args),
+    off: (...args) => L.off(tgt, ...args),
+    one: (...args) => L.one(tgt, ...args),
+    add: (...args) => L.add(tgt, ...args),
+    rem: (...args) => L.rem(tgt, ...args),
+  } as Lobj;
 }
+///
+L.add = function (tgt: Ltgt, ...args: Option[]): Lobj {
+  return L(tgt); // TODO
+};
+///
+L.rem = function (tgt: Ltgt, ...args: Option[]): Lobj {
+  // reverse so that later args override earlier args
+  const lastBoolArg = [...args].reverse().filter((arg) => typeof arg === `boolean`)[0] || null;
+  const argDeleteElement = lastBoolArg === null ? false : lastBoolArg;
+  const argShowElement = lastBoolArg === null ? false : !lastBoolArg;
+  const animation = parseAnimationArgs(...args);
 
-L.on = function (tgt: Ltgt, events: string, fn: Function): Lobj {
+  // TODO remove element if deleteElement is true; set display=none pointer=events none if not
+
+  return L(tgt);
+};
+///
+L.on = function (tgt: Ltgt, events: string, fn: Function, off?: boolean): Lobj {
   /// register an event handler on DOM elements (identified by selector string or reference) ///
   const l = L(tgt);
   const eventArr = events.split(`,`).map((ev) => ev.trim());
   l.all().forEach((el) =>
     eventArr.forEach((ev) =>
-      el.addEventListener(
+      (off ? el.removeEventListener : el.addEventListener).call(
+        el,
         ev,
         (fn as unknown) as EventListenerOrEventListenerObject
       )
@@ -92,21 +179,21 @@ L.on = function (tgt: Ltgt, events: string, fn: Function): Lobj {
   );
   return l;
 };
-
-L.hide = function (tgt: Ltgt): Lobj {
-  /// set element opacity to zero so it may fade out ///
-  const l = L(tgt);
-  l.all().forEach((el) => (el.style.opacity = (0).toString()));
-  return l;
+///
+L.off = function (tgt: Ltgt, events: string, fn: Function, on?: boolean): Lobj {
+  /// remove an event handler from DOM elements (identified by selector string or reference) ///
+  return L.on(tgt, events, fn, !on);
 };
-
-L.show = function (tgt: Ltgt): Lobj {
-  /// set element opacity to one so it may fade in ///
-  const l = L(tgt);
-  l.all().forEach((el) => (el.style.opacity = (1).toString()));
-  return l;
+///
+L.one = function (tgt: Ltgt, events: string, fn: Function): Lobj {
+  /// register an event handler on DOM elements to fire ONCE and only once ///
+  function handler(...args) {
+    L.off(tgt, events, handler);
+    fn.call(this, ...args);
+  }
+  return L.on(tgt, events, handler);
 };
-
+///
 L.get = function (tgt: Ltgt, key: string): string | null {
   const vals = L(tgt)
     .all()
@@ -115,36 +202,66 @@ L.get = function (tgt: Ltgt, key: string): string | null {
     throw new Error(`L.get called on multiple elements with differing values`);
   }
   return vals[0] || null;
+} as Lget;
+L.get.cls = function (tgt: Ltgt, key: string): string | null {
+  return null; // TODO
 };
-
-L.set = function (tgt: Ltgt, key: string, val: string): string {
+L.get.sty = function (tgt: Ltgt, key: string): string | null {
+  return null; // TODO
+};
+///
+L.set = function (tgt: Ltgt, key: string, val: string, ...args: Option[]): string {
   if (typeof val === `string`) {
     L(tgt)
       .all()
       .forEach((el) => el.setAttribute(key, val));
   }
   return val;
+} as Lset;
+L.set.cls = function (tgt: Ltgt, key: string, val: string, ...args: Option[]): string {
+  return `set`; // TODO
 };
-
-L.del = function (tgt: Ltgt, key: string): boolean {
+L.set.sty = function (tgt: Ltgt, key: string, val: string, ...args: Option[]): string {
+  return `set`; // TODO
+};
+///
+L.del = function (tgt: Ltgt, key: string, ...args: Option[]): boolean {
   const elements = L(tgt).all();
   const result = elements.some((el) => el.hasAttribute(key));
   elements.forEach((el) => el.removeAttribute(key));
   return result;
+} as Ldel;
+L.del.cls = function (tgt: Ltgt, key: string, ...args: Option[]): boolean {
+  return true; // TODO
 };
-
-L.cycle = function (tgt: Ltgt, key: string, vals: string[]): string {
+L.del.sty = function (tgt: Ltgt, key: string, ...args: Option[]): boolean {
+  return true; // TODO
+};
+///
+L.cyc = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
   const l = L(tgt);
-  const val = vals[(vals.indexOf(l.get(key)) + 1) % vals.length];
-  l.set(key, val);
+  const val = vals[(vals.indexOf(L.get(l, key)) + 1) % vals.length];
+  L.set(l, key, val);
   return val;
+} as Lcyc;
+L.cyc.cls = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
+  return `cyc`; // TODO
 };
-
-L.rand = function (tgt: Ltgt, key: string, vals: string[]): string {
+L.cyc.sty = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
+  return `cyc`; // TODO
+};
+///
+L.rnd = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
   const l = L(tgt);
   const val = vals[Math.floor(Math.random() * vals.length)];
-  l.set(key, val);
+  L.set(l, key, val);
   return val;
+} as Lrnd;
+L.rnd.cls = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
+  return `rnd`; // TODO
+};
+L.rnd.sty = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
+  return `rnd`; // TODO
 };
 ///
 /// L -- DOM query & manipulation utils /// END ///

@@ -27,17 +27,17 @@ L.state.get(`hair`);           //                    ²e²e²e²e²e²e     e²e
                                //                       e²e²e²e²²    e²e²e²e²²
 // [3]                         //             ²e²e²e²e²e²e²e²e²e²   ₂e²e²e²e²
 L(`.human[name="mogi"]`)       //                 ²e²e²e²e²e²e²e    e²e²e²²
-  .ani(`opacity`, 40 * 1000)   //                     ²e²e²e²e²²   ₂e²e²e²
+  .set(`opacity`, 40 * 1000)   //                     ²e²e²e²e²²   ₂e²e²e²
   .rem(); // after 40s         //                       e²e²e²e   ₂e²e²²
                                //                       e²e²e²   ₂e²e²
 // [4]                         //                      ₂e²e²e  ₂e²e²   ₂₂e²e²e²e₂₂
 L(`.human[name="aizawa"]`)     //                      e²e²² ₂e²e²e₂e²e²e²e²e²e²e²e²e²e₂
-  .ani(`opacity`)              //                    ₂e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e₂
+  .set(`opacity`)              //                    ₂e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e₂
   .rem(); // after 400ms       //                  ₂e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²e²₂
                                //                ₂e²e²e²e²e²²²          ²²²e²e²e²e²e²e²e²e²e²e²
 // [5]                         //              ₂e²e²e²                         ²²e²e²e²e²e²²
 L(`.human[name="ukita"]`)      //           ₂e²e²                                   ²e²e²²
-  .ani(`opacity`, 400 * 1000); //          ²²                                          ²
+  .set(`opacity`, 400 * 1000); //          ²²                                          ²
 // ...                         //
 L(`.human[name="ukita"]`)      //
   .rem();                      //
@@ -47,5 +47,5 @@ L(`.human[name="ukita"]`)      //
 === Tenets of DDD
 * Life's short; prototype fast.
 * Nothing's wrong with learning, but things that make you learn too much assume they'll live longer than you.
-* Toolkits not frameworks -- eschew cargo-cults; seek pragmatic tools that adapt to _your_ ways of thinking -- and the domain at hand.
+* Toolkits not frameworks -- forgo cargo-cults; seek pragmatic tools that adapt to _your_ ways of thinking -- and the domain at hand.
 
