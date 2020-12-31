@@ -19,35 +19,37 @@ interface Animation {
   easeFunc: EaseFunc;
   duration: number;
 }
-type Option = boolean | number | Easing | EaseFunc;
 type Ltgt = Lobj | string | HTMLElement | HTMLElement[] | Document | Window;
+type Lkey = string | number;
+type Lval = string | number | boolean;
+type Loption = boolean | number | Easing | EaseFunc;
 interface LsubGet { // allows direct manipulation of element classes & styles
-  cls?: (tgt: Ltgt, key: string) => string | null;
-  sty?: (tgt: Ltgt, key: string) => string | null;
+  cls?: (tgt: Ltgt, key: Lkey) => string | null;
+  sty?: (tgt: Ltgt, key: Lkey) => string | null;
 }
 interface LsubSet { // allows direct manipulation of element classes & styles
-  cls?: (tgt: Ltgt, key: string, val: string) => string;
-  sty?: (tgt: Ltgt, key: string, val: string) => string;
+  cls?: (tgt: Ltgt, key: Lkey) => string;
+  sty?: (tgt: Ltgt, key: Lkey, val: Lval, ...args: Loption[]) => string;
 }
 interface LsubDel { // allows direct manipulation of element classes & styles
-  cls?: (tgt: Ltgt, key: string) => boolean,
-  sty?: (tgt: Ltgt, key: string) => boolean,
+  cls?: (tgt: Ltgt, key: Lkey) => boolean,
+  sty?: (tgt: Ltgt, key: Lkey, ...args: Loption[]) => boolean,
 }
 interface LsubCycRnd { // allows direct manipulation of element classes & styles
-  cls?: (tgt: Ltgt, key: string, vals: string[]) => string;
-  sty?: (tgt: Ltgt, key: string, vals: string[]) => string;
+  cls?: (tgt: Ltgt, key: Lkey, vals: Lval[]) => string;
+  sty?: (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]) => string;
 }
-type Lget = LsubGet & ((tgt: Ltgt, key: string) => string | null);
-type Lset = LsubSet & ((tgt: Ltgt, key: string, val: string, ...args: Option[]) => string);
-type Ldel = LsubDel & ((tgt: Ltgt, key: string, ...args: Option[]) => boolean);
-type Lcyc = LsubCycRnd & ((tgt: Ltgt, key: string, vals: string[], ...args: Option[]) => string);
-type Lrnd = LsubCycRnd & ((tgt: Ltgt, key: string, vals: string[], ...args: Option[]) => string);
+type Lget = LsubGet    & ((tgt: Ltgt, key: Lkey) => string | null);
+type Lset = LsubSet    & ((tgt: Ltgt, key: Lkey, val: Lval, ...args: Loption[]) => string);
+type Ldel = LsubDel    & ((tgt: Ltgt, key: Lkey, ...args: Loption[]) => boolean);
+type Lcyc = LsubCycRnd & ((tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]) => string);
+type Lrnd = LsubCycRnd & ((tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]) => string);
 interface Lobj {
   elements: HTMLElement[];
   all: (requery?: boolean) => HTMLElement[];
   idx: (index: number) => HTMLElement;
-  add: (...args: Option[]) => Lobj;
-  rem: (...args: Option[]) => Lobj;
+  add: (...args: Loption[]) => Lobj;
+  rem: (...args: Loption[]) => Lobj;
   on: (events: string, fn: Function, off?: boolean) => Lobj;
   off: (events: string, fn: Function, on?: boolean) => Lobj;
   one: (events: string, fn: Function) => Lobj;
@@ -98,9 +100,9 @@ interface Lstate {
 
 /// Utils /// BEGIN ///
 ///
-const easings: Set<Option> = new Set(Object.values(Easing));
-const easeFuncs: Set<Option> = new Set(Object.values(EaseFunc));
-function parseAnimationArgs(...args: Option[]): Animation {
+const easings: Set<Loption> = new Set(Object.values(Easing));
+const easeFuncs: Set<Loption> = new Set(Object.values(EaseFunc));
+function _parseAnimationArgs(...args: Loption[]): Animation {
   return {
     easing: args.filter((arg) => easings.has(arg))[0] as Easing || Easing.EaseInOut,
     easeFunc: args.filter((arg) => easeFuncs.has(arg))[0] as EaseFunc || EaseFunc.Cubic, // default: smooth ease timing
@@ -148,18 +150,25 @@ function L(tgt: Ltgt): Lobj {
   } as Lobj;
 }
 ///
-L.add = function (tgt: Ltgt, ...args: Option[]): Lobj {
+L.add = function (tgt: Ltgt, ...args: Loption[]): Lobj {
   return L(tgt); // TODO
 };
 ///
-L.rem = function (tgt: Ltgt, ...args: Option[]): Lobj {
-  // reverse so that later args override earlier args
+L.rem = function (tgt: Ltgt, ...args: Loption[]): Lobj {
+  // reverse so that later args override earlier args:
   const lastBoolArg = [...args].reverse().filter((arg) => typeof arg === `boolean`)[0] || null;
-  const argDeleteElement = lastBoolArg === null ? false : lastBoolArg;
-  const argShowElement = lastBoolArg === null ? false : !lastBoolArg;
-  const animation = parseAnimationArgs(...args);
+  const deleteElement = lastBoolArg === null ? false : lastBoolArg;
+  const showElement = lastBoolArg === null ? false : !lastBoolArg;
+  const animation = _parseAnimationArgs(...args);
+  const elements = L(tgt).all();
 
-  // TODO remove element if deleteElement is true; set display=none pointer=events none if not
+  if (showElement) {
+    elements.forEach((el) => L.set.sty(el, `opacity`, 1));
+  } else if (deleteElement) {
+    elements.forEach((el) => el.parentNode.removeChild(el));
+  } else {
+    elements.forEach((el) => L.set.sty(el, `opacity`, 0));
+  }
 
   return L(tgt);
 };
@@ -194,74 +203,98 @@ L.one = function (tgt: Ltgt, events: string, fn: Function): Lobj {
   return L.on(tgt, events, handler);
 };
 ///
-L.get = function (tgt: Ltgt, key: string): string | null {
-  const vals = L(tgt)
-    .all()
-    .map((el) => el.getAttribute(key));
+function _lget(tgt: Ltgt, key: Lkey, getter: Function, name: string): string | null {
+  const vals = L(tgt).all().map((el) => getter(el, key));
   if (new Set(vals).size > 1) {
-    throw new Error(`L.get called on multiple elements with differing values`);
+    throw new Error(`${name} called on multiple elements with differing values for key "${key}"`);
   }
   return vals[0] || null;
+}
+L.get = function (tgt: Ltgt, key: Lkey): string | null {
+  const getAttribute = (el, k) => el.getAttribute(k);
+  return _lget(tgt, key, getAttribute, `L.get`);
 } as Lget;
-L.get.cls = function (tgt: Ltgt, key: string): string | null {
-  return null; // TODO
+L.get.cls = function (tgt: Ltgt, key: Lkey): string | null {
+  const hasClass = (el, k) => (el.className || ``).split(` `).includes(k) ? k : null;
+  return _lget(tgt, key, hasClass, `L.get.cls`);
 };
-L.get.sty = function (tgt: Ltgt, key: string): string | null {
-  return null; // TODO
+L.get.sty = function (tgt: Ltgt, key: Lkey): string | null {
+  const getStyle = (el, k) => el.style[k];
+  return _lget(tgt, key, getStyle, `L.get.sty`);
 };
 ///
-L.set = function (tgt: Ltgt, key: string, val: string, ...args: Option[]): string {
-  if (typeof val === `string`) {
-    L(tgt)
-      .all()
-      .forEach((el) => el.setAttribute(key, val));
+function _lset(tgt: Ltgt, key: Lkey, val: Lval, setter: Function, ...args: Loption[]): string {
+  // treat as no-op if val is null or undefined:
+  if (!(val === undefined || val === null)) {
+    val = val.toString();
+    L(tgt).all().forEach((el) => setter(el, key, val));
   }
-  return val;
+  return val as string;
+}
+L.set = function (tgt: Ltgt, key: Lkey, val: Lval, ...args: Loption[]): string {
+  const setAttribute = (el, k, v) => el.setAttribute(k, v);
+  return _lset(tgt, key, val, setAttribute, ...args);
 } as Lset;
-L.set.cls = function (tgt: Ltgt, key: string, val: string, ...args: Option[]): string {
-  return `set`; // TODO
+L.set.cls = function (tgt: Ltgt, key: Lkey): string {
+  const setClass = (el, k) => el.classlist.add(k);
+  return _lset(tgt, key, true, setClass);
 };
-L.set.sty = function (tgt: Ltgt, key: string, val: string, ...args: Option[]): string {
-  return `set`; // TODO
+L.set.sty = function (tgt: Ltgt, key: Lkey, val: Lval, ...args: Loption[]): string {
+  const setStyle = (el, k, v) => el.style[k] = v;
+  return _lset(tgt, key, val, setStyle, ...args);
 };
 ///
-L.del = function (tgt: Ltgt, key: string, ...args: Option[]): boolean {
-  const elements = L(tgt).all();
-  const result = elements.some((el) => el.hasAttribute(key));
-  elements.forEach((el) => el.removeAttribute(key));
-  return result;
+function _ldel(tgt: Ltgt, key: Lkey, checker: Function, deleter: Function, ...args: Loption[]): boolean {
+  return !!L(tgt).all().filter((el) => checker(el, key)).map((el) => deleter(el, key)).length;
+}
+L.del = function (tgt: Ltgt, key: Lkey, ...args: Loption[]): boolean {
+  const hasAttribute = (el, k) => el.hasAttribute(k);
+  const delAttribute = (el, k) => el.removeAttribute(key);
+  return _ldel(tgt, key, hasAttribute, delAttribute, ...args);
 } as Ldel;
-L.del.cls = function (tgt: Ltgt, key: string, ...args: Option[]): boolean {
-  return true; // TODO
+L.del.cls = function (tgt: Ltgt, key: Lkey, ...args: Loption[]): boolean {
+  const hasClass = (el, k) => el.classList.contains(k);
+  const delClass = (el, k) => el.removeAttribute(k);
+  return _ldel(tgt, key, hasClass, delClass, ...args);
 };
-L.del.sty = function (tgt: Ltgt, key: string, ...args: Option[]): boolean {
-  return true; // TODO
+L.del.sty = function (tgt: Ltgt, key: Lkey, ...args: Loption[]): boolean {
+  const hasStyle = (el) => !!el.style[key].length;
+  const delStyle = (el) => el.style[key] = ``;
+  return _ldel(tgt, key, hasStyle, delStyle, ...args);
 };
 ///
-L.cyc = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
+function _lcyc(tgt: Ltgt, key: Lkey, vals: Lval[], getter: Function, setter: Function, ...args: Loption[]): string {
   const l = L(tgt);
-  const val = vals[(vals.indexOf(L.get(l, key)) + 1) % vals.length];
-  L.set(l, key, val);
-  return val;
+  vals = vals.map((v) => v.toString());
+  const val = vals[(vals.indexOf(getter(l, key)) + 1) % vals.length];
+  setter(l, key, val);
+  return val as string;
+}
+L.cyc = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+  return _lcyc(tgt, key, vals, L.get, L.set, ...args);
 } as Lcyc;
-L.cyc.cls = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
-  return `cyc`; // TODO
+L.cyc.cls = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+  return _lcyc(tgt, key, vals, L.get.cls, L.set.cls, ...args);
 };
-L.cyc.sty = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
-  return `cyc`; // TODO
+L.cyc.sty = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+  return _lcyc(tgt, key, vals, L.get.sty, L.set.sty, ...args);
 };
 ///
-L.rnd = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
+function _lrnd(tgt: Ltgt, key: Lkey, vals: Lval[], setter: Function, ...args: Loption[]): string {
   const l = L(tgt);
+  vals = vals.map((v) => v.toString());
   const val = vals[Math.floor(Math.random() * vals.length)];
-  L.set(l, key, val);
-  return val;
+  setter(l, key, val);
+  return val as string;
+}
+L.rnd = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+  return _lrnd(tgt, key, vals, L.set, ...args);
 } as Lrnd;
-L.rnd.cls = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
-  return `rnd`; // TODO
+L.rnd.cls = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+  return _lrnd(tgt, key, vals, L.set.cls, ...args);
 };
-L.rnd.sty = function (tgt: Ltgt, key: string, vals: string[], ...args: Option[]): string {
-  return `rnd`; // TODO
+L.rnd.sty = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+  return _lrnd(tgt, key, vals, L.set.sty, ...args);
 };
 ///
 /// L -- DOM query & manipulation utils /// END ///
