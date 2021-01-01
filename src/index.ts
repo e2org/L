@@ -2,12 +2,6 @@
 
 /// Types /// BEGIN ///
 ///
-enum Easing {
-  ease = `ease`,
-  easeInOut = `ease-in-out`,
-  easeIn = `ease-in`,
-  easeOut = `ease-out`,
-}
 enum EaseFunc {
   linear = `linear`,
   quadradic = `quadradic`,
@@ -15,22 +9,21 @@ enum EaseFunc {
   quartic = `quartic`,
   quintic = `quintic`,
 }
-enum EaseBezier {
-  linear = `linear`,
-  quadradic = `quadradic`,
-  cubic = `cubic`,
-  quartic = `quartic`,
-  quintic = `quintic`,
+enum EaseStyle {
+  default = `default`,
+  in = `in`,
+  out = `out`,
+  both = `both`,
 }
 interface Animation {
-  easing: Easing;
+  easeStyle: EaseStyle;
   easeFunc: EaseFunc;
   duration: number;
 }
 type Ltgt = Lobj | string | HTMLElement | HTMLElement[] | Document | Window;
 type Lkey = string | number;
 type Lval = string | number | boolean;
-type Loption = boolean | number | Easing | EaseFunc;
+type Loption = boolean | number | EaseFunc | EaseStyle;
 interface LsubGet { // allows direct manipulation of element classes & styles
   cls?: (tgt: Ltgt, key: Lkey) => string | null;
   sty?: (tgt: Ltgt, key: Lkey) => string | null;
@@ -108,59 +101,61 @@ interface Lstate {
 
 /// Utils /// BEGIN ///
 ///
-const easings: Set<Loption> = new Set(Object.values(Easing));
+const easeStyles: Set<Loption> = new Set(Object.values(EaseStyle));
 const easeFuncs: Set<Loption> = new Set(Object.values(EaseFunc));
 function _parseAnimationArgs(...args: Loption[]): Animation {
   return {
-    easing: args.filter((arg) => easings.has(arg))[0] as Easing || Easing.easeInOut,
-    easeFunc: args.filter((arg) => easeFuncs.has(arg))[0] as EaseFunc || EaseFunc.cubic, // default: smooth ease timing
+    easeStyle: args.filter((arg) => easeStyles.has(arg))[0] as EaseStyle || EaseStyle.default,
+    easeFunc: args.filter((arg) => easeFuncs.has(arg))[0] as EaseFunc || null,
     duration: args.filter((arg) => Number.isInteger(arg))[0] as number || 0, // default: immediate, no animation
   };
 }
 function _bezier(animation: Animation): string {
   const beziers = {
-    'linear':      `cubic-bezier(0.250, 0.250, 0.750, 0.750)`,
+    'linear': `cubic-bezier(0.250, 0.250, 0.750, 0.750)`,
 
-    'ease':        `cubic-bezier(0.250, 0.100, 0.250, 1.000)`,
-    'ease-in-out': `cubic-bezier(0.420, 0.000, 0.580, 1.000)`,
-    'ease-in':     `cubic-bezier(0.420, 0.000, 1.000, 1.000)`,
-    'ease-out':    `cubic-bezier(0.000, 0.000, 0.580, 1.000)`,
+    'in':      `cubic-bezier(0.420, 0.000, 1.000, 1.000)`,
+    'out':     `cubic-bezier(0.000, 0.000, 0.580, 1.000)`,
+    'both':    `cubic-bezier(0.420, 0.000, 0.580, 1.000)`,
+    'default': `cubic-bezier(0.250, 0.100, 0.250, 1.000)`,
 
-    'ease-quad':    `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
-    'ease-cubic':   `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
-    'ease-quartic': `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
-    'ease-quintic': `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
+    'in-quad':    `cubic-bezier(0.550, 0.085, 0.680, 0.530)`,
+    'in-cubic':   `cubic-bezier(0.550, 0.055, 0.675, 0.190)`,
+    'in-quartic': `cubic-bezier(0.895, 0.030, 0.685, 0.220)`,
+    'in-quintic': `cubic-bezier(0.755, 0.050, 0.855, 0.060)`,
 
-    'ease-in-out-quad':    `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
-    'ease-in-out-cubic':   `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
-    'ease-in-out-quartic': `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
-    'ease-in-out-quintic': `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
+    'out-quad':    `cubic-bezier(0.250, 0.460, 0.450, 0.940)`,
+    'out-cubic':   `cubic-bezier(0.215, 0.610, 0.355, 1.000)`,
+    'out-quartic': `cubic-bezier(0.165, 0.840, 0.440, 1.000)`,
+    'out-quintic': `cubic-bezier(0.230, 1.000, 0.320, 1.000)`,
 
-    'ease-in-quad':    `cubic-bezier(0.550, 0.085, 0.680, 0.530)`,
-    'ease-in-cubic':   `cubic-bezier(0.550, 0.055, 0.675, 0.190)`,
-    'ease-in-quartic': `cubic-bezier(0.895, 0.030, 0.685, 0.220)`,
-    'ease-in-quintic': `cubic-bezier(0.755, 0.050, 0.855, 0.060)`,
+    'both-quad':    `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
+    'both-cubic':   `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
+    'both-quartic': `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
+    'both-quintic': `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
 
-    'ease-out-quad':    `cubic-bezier(0.250, 0.460, 0.450, 0.940)`,
-    'ease-out-cubic':   `cubic-bezier(0.215, 0.610, 0.355, 1.000)`,
-    'ease-out-quartic': `cubic-bezier(0.165, 0.840, 0.440, 1.000)`,
-    'ease-out-quintic': `cubic-bezier(0.230, 1.000, 0.320, 1.000)`,
+    // if ease func provided, default == both for easing:
+    'default-quad':    `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
+    'default-cubic':   `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
+    'default-quartic': `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
+    'default-quintic': `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
+
   };
 
-  if (!animation.easing && !animation.easeFunc) {
-    return beziers.ease; // browser default
+  if (!animation.easeStyle && !animation.easeFunc) {
+    return beziers.default; // browser default
 
-  } else if (animation.easing && !animation.easeFunc) {
-    return beziers[animation.easing];
+  } else if (animation.easeStyle && !animation.easeFunc) {
+    return beziers[animation.easeStyle];
 
-  } else if (!animation.easing && animation.easeFunc) {
-    return beziers[`ease-in-out-${animation.easeFunc}`];
+  } else if (!animation.easeStyle && animation.easeFunc) {
+    return beziers[`both-${animation.easeFunc}`];
 
   } else if (animation.easeFunc === EaseFunc.linear) {
     return beziers.linear;
   }
 
-  return beziers[`${animation.easing}-${animation.easeFunc}`];
+  return beziers[`${animation.easeStyle}-${animation.easeFunc}`];
 }
 ///
 /// Utils /// END ///
@@ -209,6 +204,10 @@ function L(tgt: Ltgt): Lobj {
     rem: (...args) => L.rem(tgt, ...args),
   } as Lobj;
 }
+L.ease = {
+  ...EaseStyle,
+  ...EaseFunc,
+} as Record<EaseStyle | EaseFunc, EaseStyle | EaseFunc>;
 ///
 L.add = function (tgt: Ltgt | null, tagName: string, ...args: Loption[]): Lobj {
   const animation = _parseAnimationArgs(...args);
