@@ -3,16 +3,24 @@
 /// Types /// BEGIN ///
 ///
 enum Easing {
-  EaseInOut = `ease-in-out`,
-  EaseIn = `ease-in`,
-  EaseOut = `ease-out`,
+  ease = `ease`,
+  easeInOut = `ease-in-out`,
+  easeIn = `ease-in`,
+  easeOut = `ease-out`,
 }
 enum EaseFunc {
-  Linear = `linear`,
-  Quadradic = `quadradic`,
-  Cubic = `cubic`,
-  Quartic = `quartic`,
-  Quintic = `quintic`,
+  linear = `linear`,
+  quadradic = `quadradic`,
+  cubic = `cubic`,
+  quartic = `quartic`,
+  quintic = `quintic`,
+}
+enum EaseBezier {
+  linear = `linear`,
+  quadradic = `quadradic`,
+  cubic = `cubic`,
+  quartic = `quartic`,
+  quintic = `quintic`,
 }
 interface Animation {
   easing: Easing;
@@ -48,7 +56,7 @@ interface Lobj {
   elements: HTMLElement[];
   all: (requery?: boolean) => HTMLElement[];
   idx: (index: number) => HTMLElement;
-  add: (...args: Loption[]) => Lobj;
+  add: (tagName: string, ...args: Loption[]) => Lobj;
   rem: (...args: Loption[]) => Lobj;
   on: (events: string, fn: Function, off?: boolean) => Lobj;
   off: (events: string, fn: Function, on?: boolean) => Lobj;
@@ -104,10 +112,55 @@ const easings: Set<Loption> = new Set(Object.values(Easing));
 const easeFuncs: Set<Loption> = new Set(Object.values(EaseFunc));
 function _parseAnimationArgs(...args: Loption[]): Animation {
   return {
-    easing: args.filter((arg) => easings.has(arg))[0] as Easing || Easing.EaseInOut,
-    easeFunc: args.filter((arg) => easeFuncs.has(arg))[0] as EaseFunc || EaseFunc.Cubic, // default: smooth ease timing
+    easing: args.filter((arg) => easings.has(arg))[0] as Easing || Easing.easeInOut,
+    easeFunc: args.filter((arg) => easeFuncs.has(arg))[0] as EaseFunc || EaseFunc.cubic, // default: smooth ease timing
     duration: args.filter((arg) => Number.isInteger(arg))[0] as number || 0, // default: immediate, no animation
   };
+}
+function _bezier(animation: Animation): string {
+  const beziers = {
+    'linear':      `cubic-bezier(0.250, 0.250, 0.750, 0.750)`,
+
+    'ease':        `cubic-bezier(0.250, 0.100, 0.250, 1.000)`,
+    'ease-in-out': `cubic-bezier(0.420, 0.000, 0.580, 1.000)`,
+    'ease-in':     `cubic-bezier(0.420, 0.000, 1.000, 1.000)`,
+    'ease-out':    `cubic-bezier(0.000, 0.000, 0.580, 1.000)`,
+
+    'ease-quad':    `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
+    'ease-cubic':   `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
+    'ease-quartic': `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
+    'ease-quintic': `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
+
+    'ease-in-out-quad':    `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
+    'ease-in-out-cubic':   `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
+    'ease-in-out-quartic': `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
+    'ease-in-out-quintic': `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
+
+    'ease-in-quad':    `cubic-bezier(0.550, 0.085, 0.680, 0.530)`,
+    'ease-in-cubic':   `cubic-bezier(0.550, 0.055, 0.675, 0.190)`,
+    'ease-in-quartic': `cubic-bezier(0.895, 0.030, 0.685, 0.220)`,
+    'ease-in-quintic': `cubic-bezier(0.755, 0.050, 0.855, 0.060)`,
+
+    'ease-out-quad':    `cubic-bezier(0.250, 0.460, 0.450, 0.940)`,
+    'ease-out-cubic':   `cubic-bezier(0.215, 0.610, 0.355, 1.000)`,
+    'ease-out-quartic': `cubic-bezier(0.165, 0.840, 0.440, 1.000)`,
+    'ease-out-quintic': `cubic-bezier(0.230, 1.000, 0.320, 1.000)`,
+  };
+
+  if (!animation.easing && !animation.easeFunc) {
+    return beziers.ease; // browser default
+
+  } else if (animation.easing && !animation.easeFunc) {
+    return beziers[animation.easing];
+
+  } else if (!animation.easing && animation.easeFunc) {
+    return beziers[`ease-in-out-${animation.easeFunc}`];
+
+  } else if (animation.easeFunc === EaseFunc.linear) {
+    return beziers.linear;
+  }
+
+  return beziers[`${animation.easing}-${animation.easeFunc}`];
 }
 ///
 /// Utils /// END ///
@@ -120,10 +173,17 @@ function L(tgt: Ltgt): Lobj {
     elements: [],
     all: (requery = false) => {
       if (requery || !l.elements.length) {
-        const res = typeof tgt !== `string` ? tgt : ((Array.from(
-          document.body.querySelectorAll(tgt)
-        ) as unknown) as HTMLElement[]);
-        l.elements = ((!Array.isArray(res) ? [res] : res) as unknown) as HTMLElement[];
+        let res;
+        if (typeof tgt === `string`) {
+          res = (Array.from(
+            document.body.querySelectorAll(tgt)
+          ) as unknown) as HTMLElement[];
+        } else if (typeof (tgt as Lobj).all === `function`) {
+          res = (tgt as Lobj).all(); // unwrap another L object
+        }
+        l.elements = ((
+          !Array.isArray(res) ? [res] : res
+        ) as unknown) as HTMLElement[];
       }
       return l.elements;
     },
@@ -150,8 +210,30 @@ function L(tgt: Ltgt): Lobj {
   } as Lobj;
 }
 ///
-L.add = function (tgt: Ltgt, ...args: Loption[]): Lobj {
-  return L(tgt); // TODO
+L.add = function (tgt: Ltgt | null, tagName: string, ...args: Loption[]): Lobj {
+  const animation = _parseAnimationArgs(...args);
+  const tag = document.createElement(tagName);
+  const l = L(tag);
+
+  if (animation.duration) {
+    L.set.sty(
+      l,
+      `transition`,
+      `all ${animation.duration}ms ${_bezier(animation)}`,
+    );
+    L.set.sty(l, `opacity`, 0);
+    requestAnimationFrame(() => L.set.sty(l, `opacity`, 1));
+    setTimeout(() => {
+      L.del.sty(l, `transition`);
+      L.del.sty(l, `opacity`);
+    }, animation.duration);
+  }
+
+  if (tgt) {
+    L(tgt).idx(0).appendChild(tag);
+  }
+
+  return l;
 };
 ///
 L.rem = function (tgt: Ltgt, ...args: Loption[]): Lobj {
@@ -160,17 +242,33 @@ L.rem = function (tgt: Ltgt, ...args: Loption[]): Lobj {
   const deleteElement = lastBoolArg === null ? false : lastBoolArg;
   const showElement = lastBoolArg === null ? false : !lastBoolArg;
   const animation = _parseAnimationArgs(...args);
-  const elements = L(tgt).all();
+  const l = L(tgt);
 
-  if (showElement) {
-    elements.forEach((el) => L.set.sty(el, `opacity`, 1));
-  } else if (deleteElement) {
-    elements.forEach((el) => el.parentNode.removeChild(el));
+  if (!animation.duration) {
+    if (deleteElement) {
+      l.all().forEach((el) => el.parentNode.removeChild(el));
+    } else {
+      L.set.sty(l, `opacity`, showElement ? 1 : 0);
+    }
   } else {
-    elements.forEach((el) => L.set.sty(el, `opacity`, 0));
+    L.set.sty(
+      l,
+      `transition`,
+      `all ${animation.duration}ms ${_bezier(animation)}`,
+    );
+    L.set.sty(l, `opacity`, L.get.sty(l, `opacity`) || (showElement ? 0 : 1));
+    requestAnimationFrame(() => L.set.sty(l, `opacity`, showElement ? 1 : 0));
+    setTimeout(() => {
+      L.del.sty(l, `transition`);
+      if (deleteElement) {
+        l.all().forEach((el) => el.parentNode.removeChild(el));
+      } else if (showElement) {
+        L.del.sty(l, `opacity`);
+      }
+    }, animation.duration);
   }
 
-  return L(tgt);
+  return l;
 };
 ///
 L.on = function (tgt: Ltgt, events: string, fn: Function, off?: boolean): Lobj {
