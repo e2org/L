@@ -19,135 +19,434 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
+/// Types /// BEGIN ///
+///
+var EaseFunc;
+(function (EaseFunc) {
+    EaseFunc["linear"] = "linear";
+    EaseFunc["quadradic"] = "quadradic";
+    EaseFunc["cubic"] = "cubic";
+    EaseFunc["quartic"] = "quartic";
+    EaseFunc["quintic"] = "quintic";
+})(EaseFunc || (EaseFunc = {}));
+var EaseStyle;
+(function (EaseStyle) {
+    EaseStyle["default"] = "default";
+    EaseStyle["in"] = "in";
+    EaseStyle["out"] = "out";
+    EaseStyle["both"] = "both";
+})(EaseStyle || (EaseStyle = {}));
 ///
 /// Types /// END ///
+/// Utils /// BEGIN ///
+///
+var easeStyles = new Set(Object.values(EaseStyle));
+var easeFuncs = new Set(Object.values(EaseFunc));
+function _parseAnimationArgs() {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
+    }
+    return {
+        easeStyle: args.filter(function (arg) { return easeStyles.has(arg); })[0] ||
+            EaseStyle["default"],
+        easeFunc: args.filter(function (arg) { return easeFuncs.has(arg); })[0] || null,
+        durationMs: args.filter(function (arg) { return Number.isInteger(arg); })[0] || 0
+    };
+}
+function _bezier(animation) {
+    var beziers = {
+        linear: "cubic-bezier(0.250, 0.250, 0.750, 0.750)",
+        "in": "cubic-bezier(0.420, 0.000, 1.000, 1.000)",
+        out: "cubic-bezier(0.000, 0.000, 0.580, 1.000)",
+        both: "cubic-bezier(0.420, 0.000, 0.580, 1.000)",
+        "default": "cubic-bezier(0.250, 0.100, 0.250, 1.000)",
+        "in-quad": "cubic-bezier(0.550, 0.085, 0.680, 0.530)",
+        "in-cubic": "cubic-bezier(0.550, 0.055, 0.675, 0.190)",
+        "in-quartic": "cubic-bezier(0.895, 0.030, 0.685, 0.220)",
+        "in-quintic": "cubic-bezier(0.755, 0.050, 0.855, 0.060)",
+        "out-quad": "cubic-bezier(0.250, 0.460, 0.450, 0.940)",
+        "out-cubic": "cubic-bezier(0.215, 0.610, 0.355, 1.000)",
+        "out-quartic": "cubic-bezier(0.165, 0.840, 0.440, 1.000)",
+        "out-quintic": "cubic-bezier(0.230, 1.000, 0.320, 1.000)",
+        "both-quad": "cubic-bezier(0.455, 0.030, 0.515, 0.955)",
+        "both-cubic": "cubic-bezier(0.645, 0.045, 0.355, 1.000)",
+        "both-quartic": "cubic-bezier(0.770, 0.000, 0.175, 1.000)",
+        "both-quintic": "cubic-bezier(0.860, 0.000, 0.070, 1.000)",
+        // if ease func provided, default == both for easing:
+        "default-quad": "cubic-bezier(0.455, 0.030, 0.515, 0.955)",
+        "default-cubic": "cubic-bezier(0.645, 0.045, 0.355, 1.000)",
+        "default-quartic": "cubic-bezier(0.770, 0.000, 0.175, 1.000)",
+        "default-quintic": "cubic-bezier(0.860, 0.000, 0.070, 1.000)"
+    };
+    if (!animation.easeStyle && !animation.easeFunc) {
+        return beziers["default"]; // browser default
+    }
+    else if (animation.easeStyle && !animation.easeFunc) {
+        return beziers[animation.easeStyle];
+    }
+    else if (!animation.easeStyle && animation.easeFunc) {
+        return beziers["both-" + animation.easeFunc];
+    }
+    else if (animation.easeFunc === EaseFunc.linear) {
+        return beziers.linear;
+    }
+    return beziers[animation.easeStyle + "-" + animation.easeFunc];
+}
+///
+/// Utils /// END ///
 /// L -- DOM query & manipulation utils /// BEGIN ///
 ///
 function L(tgt) {
     /// query DOM for an array of elements ///
-    tgt =
-        typeof tgt === "string"
-            ? Array.from(document.body.querySelectorAll(tgt))
-            : tgt;
-    tgt = (!Array.isArray(tgt) ? [tgt] : tgt);
-    return {
-        all: function () { return tgt; },
-        idx: function (index) { return tgt[0] || null; },
-        on: function () {
+    var l = {
+        elements: [],
+        all: function (requery) {
+            if (requery === void 0) { requery = false; }
+            if (requery || !l.elements.length) {
+                var res = void 0;
+                if (typeof tgt === "string") {
+                    res = Array.from(document.body.querySelectorAll(tgt));
+                }
+                else if (typeof tgt.all === "function") {
+                    res = tgt.all(); // unwrap another L object
+                }
+                l.elements = (!Array.isArray(res)
+                    ? [res]
+                    : res);
+            }
+            return l.elements;
+        },
+        idx: function (index) { return l.all()[0] || null; }
+    };
+    ["get", "set", "del", "cyc", "rnd"].forEach(function (func) {
+        l[func] = function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            return L[func].apply(L, __spreadArrays([tgt], args));
+        };
+        l[func].cls = function () {
+            var _a;
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            return (_a = L[func]).cls.apply(_a, __spreadArrays([tgt], args));
+        };
+        l[func].sty = function () {
+            var _a;
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            return (_a = L[func]).sty.apply(_a, __spreadArrays([tgt], args));
+        };
+    });
+    return __assign(__assign({}, l), { on: function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i] = arguments[_i];
             }
             return L.on.apply(L, __spreadArrays([tgt], args));
-        },
-        hide: function () {
+        }, off: function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i] = arguments[_i];
             }
-            return L.hide.apply(L, __spreadArrays([tgt], args));
-        },
-        show: function () {
+            return L.off.apply(L, __spreadArrays([tgt], args));
+        }, one: function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i] = arguments[_i];
             }
-            return L.show.apply(L, __spreadArrays([tgt], args));
-        },
-        get: function () {
+            return L.one.apply(L, __spreadArrays([tgt], args));
+        }, add: function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i] = arguments[_i];
             }
-            return L.get.apply(L, __spreadArrays([tgt], args));
-        },
-        set: function () {
+            return L.add.apply(L, __spreadArrays([tgt], args));
+        }, rem: function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i] = arguments[_i];
             }
-            return L.set.apply(L, __spreadArrays([tgt], args));
-        },
-        del: function () {
+            return L.rem.apply(L, __spreadArrays([tgt], args));
+        }, ani: function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i] = arguments[_i];
             }
-            return L.del.apply(L, __spreadArrays([tgt], args));
-        },
-        cycle: function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i] = arguments[_i];
-            }
-            return L.cycle.apply(L, __spreadArrays([tgt], args));
-        },
-        rand: function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i] = arguments[_i];
-            }
-            return L.rand.apply(L, __spreadArrays([tgt], args));
-        }
-    };
+            return L.ani.apply(L, __spreadArrays([tgt], args));
+        } });
 }
-L.on = function (tgt, events, fn) {
+///
+L.ease = __assign(__assign({}, EaseStyle), EaseFunc);
+///
+L.ani = function (tgt) {
+    var args = [];
+    for (var _i = 1; _i < arguments.length; _i++) {
+        args[_i - 1] = arguments[_i];
+    }
+    var l = L(tgt);
+    var animation = _parseAnimationArgs.apply(void 0, args);
+    if (animation.durationMs > 0) {
+        l.animation = animation;
+        var origTransition_1 = L.get.sty(l, "transition");
+        L.set.sty(l, "transition", "all " + animation.durationMs + "ms " + _bezier(animation));
+        setTimeout(function () {
+            L.set.sty(l, "transition", origTransition_1);
+            l.animation = null;
+        }, animation.durationMs);
+    }
+    return l;
+};
+///
+L.add = function (tgt, tagName) {
+    var _a;
+    var args = [];
+    for (var _i = 2; _i < arguments.length; _i++) {
+        args[_i - 2] = arguments[_i];
+    }
+    var tag = document.createElement(tagName);
+    var l = (_a = L(tag)).ani.apply(_a, args);
+    if (l.animation) {
+        L.set.sty(l, "opacity", 0);
+        requestAnimationFrame(function () { return L.set.sty(l, "opacity", 1); });
+        setTimeout(function () { return L.del.sty(l, "opacity"); }, l.animation.durationMs);
+    }
+    if (tgt) {
+        L(tgt).idx(0).appendChild(tag);
+    }
+    return l;
+};
+///
+L.rem = function (tgt) {
+    var _a;
+    var args = [];
+    for (var _i = 1; _i < arguments.length; _i++) {
+        args[_i - 1] = arguments[_i];
+    }
+    // reverse so that later args override earlier args:
+    var lastBoolArg = __spreadArrays(args).reverse().filter(function (arg) { return typeof arg === "boolean"; })[0] || null;
+    var deleteElement = lastBoolArg === null ? false : lastBoolArg;
+    var showElement = lastBoolArg === null ? false : !lastBoolArg;
+    var animation = _parseAnimationArgs.apply(void 0, args);
+    var l = (_a = L(tgt)).ani.apply(_a, args);
+    if (!l.animation) {
+        if (deleteElement) {
+            l.all().forEach(function (el) { return el.parentNode.removeChild(el); });
+        }
+        else {
+            L.set.sty(l, "opacity", showElement ? 1 : 0);
+        }
+    }
+    else {
+        L.set.sty(l, "opacity", L.get.sty(l, "opacity") || (showElement ? 0 : 1));
+        requestAnimationFrame(function () { return L.set.sty(l, "opacity", showElement ? 1 : 0); });
+        setTimeout(function () {
+            if (deleteElement) {
+                l.all().forEach(function (el) { return el.parentNode.removeChild(el); });
+            }
+            else if (showElement) {
+                L.del.sty(l, "opacity");
+            }
+        }, l.animation.durationMs);
+    }
+    return l;
+};
+///
+L.on = function (tgt, events, fn, off) {
     /// register an event handler on DOM elements (identified by selector string or reference) ///
     var l = L(tgt);
     var eventArr = events.split(",").map(function (ev) { return ev.trim(); });
     l.all().forEach(function (el) {
         return eventArr.forEach(function (ev) {
-            return el.addEventListener(ev, fn);
+            return (off ? el.removeEventListener : el.addEventListener).call(el, ev, fn);
         });
     });
     return l;
 };
-L.hide = function (tgt) {
-    /// set element opacity to zero so it may fade out ///
-    var l = L(tgt);
-    l.all().forEach(function (el) { return (el.style.opacity = (0).toString()); });
-    return l;
+///
+L.off = function (tgt, events, fn, on) {
+    /// remove an event handler from DOM elements (identified by selector string or reference) ///
+    return L.on(tgt, events, fn, !on);
 };
-L.show = function (tgt) {
-    /// set element opacity to one so it may fade in ///
-    var l = L(tgt);
-    l.all().forEach(function (el) { return (el.style.opacity = (1).toString()); });
-    return l;
+///
+L.one = function (tgt, events, fn) {
+    /// register an event handler on DOM elements to fire ONCE and only once ///
+    function handler() {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        L.off(tgt, events, handler);
+        fn.call.apply(fn, __spreadArrays([this], args));
+    }
+    return L.on(tgt, events, handler);
 };
-L.get = function (tgt, key) {
+///
+function _lget(tgt, key, getter, name) {
     var vals = L(tgt)
         .all()
-        .map(function (el) { return el.getAttribute(key); });
+        .map(function (el) { return getter(el, key); });
     if (new Set(vals).size > 1) {
-        throw new Error("L.get called on multiple elements with differing values");
+        throw new Error(name + " called on multiple elements with differing values for key \"" + key + "\"");
     }
     return vals[0] || null;
+}
+L.get = function (tgt, key) {
+    var getAttribute = function (el, k) { return el.getAttribute(k); };
+    return _lget(tgt, key, getAttribute, "L.get");
 };
-L.set = function (tgt, key, val) {
-    if (typeof val === "string") {
-        L(tgt)
-            .all()
-            .forEach(function (el) { return el.setAttribute(key, val); });
+L.get.cls = function (tgt, key) {
+    var hasClass = function (el, k) {
+        return (el.className || "").split(" ").includes(k) ? k : null;
+    };
+    return _lget(tgt, key, hasClass, "L.get.cls");
+};
+L.get.sty = function (tgt, key) {
+    var getStyle = function (el, k) { return el.style[k]; };
+    return _lget(tgt, key, getStyle, "L.get.sty");
+};
+///
+function _lset(tgt, key, val, setter) {
+    var args = [];
+    for (var _i = 4; _i < arguments.length; _i++) {
+        args[_i - 4] = arguments[_i];
+    }
+    // treat as no-op if val is null or undefined:
+    if (!(val === undefined || val === null)) {
+        val = val.toString();
+        L.ani.apply(L, __spreadArrays([tgt], args)).all()
+            .forEach(function (el) { return setter(el, key, val); });
     }
     return val;
+}
+L.set = function (tgt, key, val) {
+    var args = [];
+    for (var _i = 3; _i < arguments.length; _i++) {
+        args[_i - 3] = arguments[_i];
+    }
+    var setAttribute = function (el, k, v) { return el.setAttribute(k, v); };
+    return _lset.apply(void 0, __spreadArrays([tgt, key, val, setAttribute], args));
 };
+L.set.cls = function (tgt, key) {
+    var setClass = function (el, k) { return el.classlist.add(k); };
+    return _lset(tgt, key, true, setClass);
+};
+L.set.sty = function (tgt, key, val) {
+    var args = [];
+    for (var _i = 3; _i < arguments.length; _i++) {
+        args[_i - 3] = arguments[_i];
+    }
+    var setStyle = function (el, k, v) { return (el.style[k] = v); };
+    return _lset.apply(void 0, __spreadArrays([tgt, key, val, setStyle], args));
+};
+///
+function _ldel(tgt, key, checker, deleter) {
+    var args = [];
+    for (var _i = 4; _i < arguments.length; _i++) {
+        args[_i - 4] = arguments[_i];
+    }
+    return !!L.ani.apply(L, __spreadArrays([tgt], args)).all()
+        .filter(function (el) { return checker(el, key); })
+        .map(function (el) { return deleter(el, key); }).length;
+}
 L.del = function (tgt, key) {
-    var elements = L(tgt).all();
-    var result = elements.some(function (el) { return el.hasAttribute(key); });
-    elements.forEach(function (el) { return el.removeAttribute(key); });
-    return result;
+    var args = [];
+    for (var _i = 2; _i < arguments.length; _i++) {
+        args[_i - 2] = arguments[_i];
+    }
+    var hasAttribute = function (el, k) { return el.hasAttribute(k); };
+    var delAttribute = function (el, k) { return el.removeAttribute(key); };
+    return _ldel.apply(void 0, __spreadArrays([tgt, key, hasAttribute, delAttribute], args));
 };
-L.cycle = function (tgt, key, vals) {
+L.del.cls = function (tgt, key) {
+    var args = [];
+    for (var _i = 2; _i < arguments.length; _i++) {
+        args[_i - 2] = arguments[_i];
+    }
+    var hasClass = function (el, k) { return el.classList.contains(k); };
+    var delClass = function (el, k) { return el.removeAttribute(k); };
+    return _ldel.apply(void 0, __spreadArrays([tgt, key, hasClass, delClass], args));
+};
+L.del.sty = function (tgt, key) {
+    var args = [];
+    for (var _i = 2; _i < arguments.length; _i++) {
+        args[_i - 2] = arguments[_i];
+    }
+    var hasStyle = function (el) { return !!el.style[key].length; };
+    var delStyle = function (el) { return (el.style[key] = ""); };
+    return _ldel.apply(void 0, __spreadArrays([tgt, key, hasStyle, delStyle], args));
+};
+///
+function _lcyc(tgt, key, vals, getter, setter) {
+    var args = [];
+    for (var _i = 5; _i < arguments.length; _i++) {
+        args[_i - 5] = arguments[_i];
+    }
     var l = L(tgt);
-    var val = vals[(vals.indexOf(l.get(key)) + 1) % vals.length];
-    l.set(key, val);
+    vals = vals.map(function (v) { return v.toString(); });
+    var val = vals[(vals.indexOf(getter(l, key)) + 1) % vals.length];
+    setter(l, key, val);
     return val;
+}
+L.cyc = function (tgt, key, vals) {
+    var args = [];
+    for (var _i = 3; _i < arguments.length; _i++) {
+        args[_i - 3] = arguments[_i];
+    }
+    return _lcyc.apply(void 0, __spreadArrays([tgt, key, vals, L.get, L.set], args));
 };
-L.rand = function (tgt, key, vals) {
+L.cyc.cls = function (tgt, key, vals) {
+    var args = [];
+    for (var _i = 3; _i < arguments.length; _i++) {
+        args[_i - 3] = arguments[_i];
+    }
+    return _lcyc.apply(void 0, __spreadArrays([tgt, key, vals, L.get.cls, L.set.cls], args));
+};
+L.cyc.sty = function (tgt, key, vals) {
+    var args = [];
+    for (var _i = 3; _i < arguments.length; _i++) {
+        args[_i - 3] = arguments[_i];
+    }
+    return _lcyc.apply(void 0, __spreadArrays([tgt, key, vals, L.get.sty, L.set.sty], args));
+};
+///
+function _lrnd(tgt, key, vals, setter) {
+    var args = [];
+    for (var _i = 4; _i < arguments.length; _i++) {
+        args[_i - 4] = arguments[_i];
+    }
     var l = L(tgt);
+    vals = vals.map(function (v) { return v.toString(); });
     var val = vals[Math.floor(Math.random() * vals.length)];
-    l.set(key, val);
+    setter(l, key, val);
     return val;
+}
+L.rnd = function (tgt, key, vals) {
+    var args = [];
+    for (var _i = 3; _i < arguments.length; _i++) {
+        args[_i - 3] = arguments[_i];
+    }
+    return _lrnd.apply(void 0, __spreadArrays([tgt, key, vals, L.set], args));
+};
+L.rnd.cls = function (tgt, key, vals) {
+    var args = [];
+    for (var _i = 3; _i < arguments.length; _i++) {
+        args[_i - 3] = arguments[_i];
+    }
+    return _lrnd.apply(void 0, __spreadArrays([tgt, key, vals, L.set.cls], args));
+};
+L.rnd.sty = function (tgt, key, vals) {
+    var args = [];
+    for (var _i = 3; _i < arguments.length; _i++) {
+        args[_i - 3] = arguments[_i];
+    }
+    return _lrnd.apply(void 0, __spreadArrays([tgt, key, vals, L.set.sty], args));
 };
 ///
 /// L -- DOM query & manipulation utils /// END ///

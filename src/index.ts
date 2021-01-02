@@ -18,39 +18,48 @@ enum EaseStyle {
 interface Animation {
   easeStyle: EaseStyle;
   easeFunc: EaseFunc;
-  duration: number;
+  durationMs: number;
 }
 type Ltgt = Lobj | string | HTMLElement | HTMLElement[] | Document | Window;
 type Lkey = string | number;
 type Lval = string | number | boolean;
 type Loption = boolean | number | EaseFunc | EaseStyle;
-interface LsubGet { // allows direct manipulation of element classes & styles
+interface LsubGet {
+  // allows direct manipulation of element classes & styles
   cls?: (tgt: Ltgt, key: Lkey) => string | null;
   sty?: (tgt: Ltgt, key: Lkey) => string | null;
 }
-interface LsubSet { // allows direct manipulation of element classes & styles
+interface LsubSet {
+  // allows direct manipulation of element classes & styles
   cls?: (tgt: Ltgt, key: Lkey) => string;
   sty?: (tgt: Ltgt, key: Lkey, val: Lval, ...args: Loption[]) => string;
 }
-interface LsubDel { // allows direct manipulation of element classes & styles
-  cls?: (tgt: Ltgt, key: Lkey) => boolean,
-  sty?: (tgt: Ltgt, key: Lkey, ...args: Loption[]) => boolean,
+interface LsubDel {
+  // allows direct manipulation of element classes & styles
+  cls?: (tgt: Ltgt, key: Lkey) => boolean;
+  sty?: (tgt: Ltgt, key: Lkey, ...args: Loption[]) => boolean;
 }
-interface LsubCycRnd { // allows direct manipulation of element classes & styles
+interface LsubCycRnd {
+  // allows direct manipulation of element classes & styles
   cls?: (tgt: Ltgt, key: Lkey, vals: Lval[]) => string;
   sty?: (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]) => string;
 }
-type Lget = LsubGet    & ((tgt: Ltgt, key: Lkey) => string | null);
-type Lset = LsubSet    & ((tgt: Ltgt, key: Lkey, val: Lval, ...args: Loption[]) => string);
-type Ldel = LsubDel    & ((tgt: Ltgt, key: Lkey, ...args: Loption[]) => boolean);
-type Lcyc = LsubCycRnd & ((tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]) => string);
-type Lrnd = LsubCycRnd & ((tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]) => string);
+type Lget = LsubGet & ((tgt: Ltgt, key: Lkey) => string | null);
+type Lset = LsubSet &
+  ((tgt: Ltgt, key: Lkey, val: Lval, ...args: Loption[]) => string);
+type Ldel = LsubDel & ((tgt: Ltgt, key: Lkey, ...args: Loption[]) => boolean);
+type Lcyc = LsubCycRnd &
+  ((tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]) => string);
+type Lrnd = LsubCycRnd &
+  ((tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]) => string);
 interface Lobj {
   elements: HTMLElement[];
+  animation: Animation | null;
   all: (requery?: boolean) => HTMLElement[];
   idx: (index: number) => HTMLElement;
   add: (tagName: string, ...args: Loption[]) => Lobj;
   rem: (...args: Loption[]) => Lobj;
+  ani: (...args: Loption[]) => Lobj;
   on: (events: string, fn: Function, off?: boolean) => Lobj;
   off: (events: string, fn: Function, on?: boolean) => Lobj;
   one: (events: string, fn: Function) => Lobj;
@@ -105,52 +114,50 @@ const easeStyles: Set<Loption> = new Set(Object.values(EaseStyle));
 const easeFuncs: Set<Loption> = new Set(Object.values(EaseFunc));
 function _parseAnimationArgs(...args: Loption[]): Animation {
   return {
-    easeStyle: args.filter((arg) => easeStyles.has(arg))[0] as EaseStyle || EaseStyle.default,
-    easeFunc: args.filter((arg) => easeFuncs.has(arg))[0] as EaseFunc || null,
-    duration: args.filter((arg) => Number.isInteger(arg))[0] as number || 0, // default: immediate, no animation
+    easeStyle:
+      (args.filter((arg) => easeStyles.has(arg))[0] as EaseStyle) ||
+      EaseStyle.default,
+    easeFunc: (args.filter((arg) => easeFuncs.has(arg))[0] as EaseFunc) || null,
+    durationMs: (args.filter((arg) => Number.isInteger(arg))[0] as number) || 0, // default: immediate, no animation
   };
 }
 function _bezier(animation: Animation): string {
   const beziers = {
-    'linear': `cubic-bezier(0.250, 0.250, 0.750, 0.750)`,
+    linear: `cubic-bezier(0.250, 0.250, 0.750, 0.750)`,
 
-    'in':      `cubic-bezier(0.420, 0.000, 1.000, 1.000)`,
-    'out':     `cubic-bezier(0.000, 0.000, 0.580, 1.000)`,
-    'both':    `cubic-bezier(0.420, 0.000, 0.580, 1.000)`,
-    'default': `cubic-bezier(0.250, 0.100, 0.250, 1.000)`,
+    in: `cubic-bezier(0.420, 0.000, 1.000, 1.000)`,
+    out: `cubic-bezier(0.000, 0.000, 0.580, 1.000)`,
+    both: `cubic-bezier(0.420, 0.000, 0.580, 1.000)`,
+    default: `cubic-bezier(0.250, 0.100, 0.250, 1.000)`,
 
-    'in-quad':    `cubic-bezier(0.550, 0.085, 0.680, 0.530)`,
-    'in-cubic':   `cubic-bezier(0.550, 0.055, 0.675, 0.190)`,
-    'in-quartic': `cubic-bezier(0.895, 0.030, 0.685, 0.220)`,
-    'in-quintic': `cubic-bezier(0.755, 0.050, 0.855, 0.060)`,
+    "in-quad": `cubic-bezier(0.550, 0.085, 0.680, 0.530)`,
+    "in-cubic": `cubic-bezier(0.550, 0.055, 0.675, 0.190)`,
+    "in-quartic": `cubic-bezier(0.895, 0.030, 0.685, 0.220)`,
+    "in-quintic": `cubic-bezier(0.755, 0.050, 0.855, 0.060)`,
 
-    'out-quad':    `cubic-bezier(0.250, 0.460, 0.450, 0.940)`,
-    'out-cubic':   `cubic-bezier(0.215, 0.610, 0.355, 1.000)`,
-    'out-quartic': `cubic-bezier(0.165, 0.840, 0.440, 1.000)`,
-    'out-quintic': `cubic-bezier(0.230, 1.000, 0.320, 1.000)`,
+    "out-quad": `cubic-bezier(0.250, 0.460, 0.450, 0.940)`,
+    "out-cubic": `cubic-bezier(0.215, 0.610, 0.355, 1.000)`,
+    "out-quartic": `cubic-bezier(0.165, 0.840, 0.440, 1.000)`,
+    "out-quintic": `cubic-bezier(0.230, 1.000, 0.320, 1.000)`,
 
-    'both-quad':    `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
-    'both-cubic':   `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
-    'both-quartic': `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
-    'both-quintic': `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
+    "both-quad": `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
+    "both-cubic": `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
+    "both-quartic": `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
+    "both-quintic": `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
 
     // if ease func provided, default == both for easing:
-    'default-quad':    `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
-    'default-cubic':   `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
-    'default-quartic': `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
-    'default-quintic': `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
-
+    "default-quad": `cubic-bezier(0.455, 0.030, 0.515, 0.955)`,
+    "default-cubic": `cubic-bezier(0.645, 0.045, 0.355, 1.000)`,
+    "default-quartic": `cubic-bezier(0.770, 0.000, 0.175, 1.000)`,
+    "default-quintic": `cubic-bezier(0.860, 0.000, 0.070, 1.000)`,
   };
 
   if (!animation.easeStyle && !animation.easeFunc) {
     return beziers.default; // browser default
-
   } else if (animation.easeStyle && !animation.easeFunc) {
     return beziers[animation.easeStyle];
-
   } else if (!animation.easeStyle && animation.easeFunc) {
     return beziers[`both-${animation.easeFunc}`];
-
   } else if (animation.easeFunc === EaseFunc.linear) {
     return beziers.linear;
   }
@@ -176,56 +183,62 @@ function L(tgt: Ltgt): Lobj {
         } else if (typeof (tgt as Lobj).all === `function`) {
           res = (tgt as Lobj).all(); // unwrap another L object
         }
-        l.elements = ((
-          !Array.isArray(res) ? [res] : res
-        ) as unknown) as HTMLElement[];
+        l.elements = ((!Array.isArray(res)
+          ? [res]
+          : res) as unknown) as HTMLElement[];
       }
       return l.elements;
     },
     idx: (index) => l.all()[0] || null,
   };
-  [
-    `get`,
-    `set`,
-    `del`,
-    `cyc`,
-    `rnd`,
-  ].forEach((func) => {
+  [`get`, `set`, `del`, `cyc`, `rnd`].forEach((func) => {
     l[func] = (...args) => L[func](tgt, ...args);
     l[func].cls = (...args) => L[func].cls(tgt, ...args);
     l[func].sty = (...args) => L[func].sty(tgt, ...args);
   });
   return {
     ...l,
-    on:  (...args) => L.on(tgt, ...args),
+    on: (...args) => L.on(tgt, ...args),
     off: (...args) => L.off(tgt, ...args),
     one: (...args) => L.one(tgt, ...args),
     add: (...args) => L.add(tgt, ...args),
     rem: (...args) => L.rem(tgt, ...args),
+    ani: (...args) => L.ani(tgt, ...args),
   } as Lobj;
 }
+///
 L.ease = {
   ...EaseStyle,
   ...EaseFunc,
 } as Record<EaseStyle | EaseFunc, EaseStyle | EaseFunc>;
 ///
-L.add = function (tgt: Ltgt | null, tagName: string, ...args: Loption[]): Lobj {
+L.ani = function (tgt: Ltgt, ...args: Loption[]): Lobj {
+  const l = L(tgt);
   const animation = _parseAnimationArgs(...args);
-  const tag = document.createElement(tagName);
-  const l = L(tag);
-
-  if (animation.duration) {
+  if (animation.durationMs > 0) {
+    l.animation = animation;
+    const origTransition = L.get.sty(l, `transition`);
     L.set.sty(
       l,
       `transition`,
-      `all ${animation.duration}ms ${_bezier(animation)}`,
+      `all ${animation.durationMs}ms ${_bezier(animation)}`
     );
+    setTimeout(() => {
+      L.set.sty(l, `transition`, origTransition);
+      l.animation = null;
+    }, animation.durationMs);
+  }
+  return l;
+};
+///
+L.add = function (tgt: Ltgt | null, tagName: string, ...args: Loption[]): Lobj {
+  const tag = document.createElement(tagName);
+  const l = L(tag).ani(...args);
+
+  if (l.animation) {
     L.set.sty(l, `opacity`, 0);
     requestAnimationFrame(() => L.set.sty(l, `opacity`, 1));
-    setTimeout(() => {
-      L.del.sty(l, `transition`);
-      L.del.sty(l, `opacity`);
-    }, animation.duration);
+    setTimeout(() => L.del.sty(l, `opacity`), l.animation.durationMs);
   }
 
   if (tgt) {
@@ -237,34 +250,29 @@ L.add = function (tgt: Ltgt | null, tagName: string, ...args: Loption[]): Lobj {
 ///
 L.rem = function (tgt: Ltgt, ...args: Loption[]): Lobj {
   // reverse so that later args override earlier args:
-  const lastBoolArg = [...args].reverse().filter((arg) => typeof arg === `boolean`)[0] || null;
+  const lastBoolArg =
+    [...args].reverse().filter((arg) => typeof arg === `boolean`)[0] || null;
   const deleteElement = lastBoolArg === null ? false : lastBoolArg;
   const showElement = lastBoolArg === null ? false : !lastBoolArg;
   const animation = _parseAnimationArgs(...args);
-  const l = L(tgt);
+  const l = L(tgt).ani(...args);
 
-  if (!animation.duration) {
+  if (!l.animation) {
     if (deleteElement) {
       l.all().forEach((el) => el.parentNode.removeChild(el));
     } else {
       L.set.sty(l, `opacity`, showElement ? 1 : 0);
     }
   } else {
-    L.set.sty(
-      l,
-      `transition`,
-      `all ${animation.duration}ms ${_bezier(animation)}`,
-    );
     L.set.sty(l, `opacity`, L.get.sty(l, `opacity`) || (showElement ? 0 : 1));
     requestAnimationFrame(() => L.set.sty(l, `opacity`, showElement ? 1 : 0));
     setTimeout(() => {
-      L.del.sty(l, `transition`);
       if (deleteElement) {
         l.all().forEach((el) => el.parentNode.removeChild(el));
       } else if (showElement) {
         L.del.sty(l, `opacity`);
       }
-    }, animation.duration);
+    }, l.animation.durationMs);
   }
 
   return l;
@@ -300,10 +308,19 @@ L.one = function (tgt: Ltgt, events: string, fn: Function): Lobj {
   return L.on(tgt, events, handler);
 };
 ///
-function _lget(tgt: Ltgt, key: Lkey, getter: Function, name: string): string | null {
-  const vals = L(tgt).all().map((el) => getter(el, key));
+function _lget(
+  tgt: Ltgt,
+  key: Lkey,
+  getter: Function,
+  name: string
+): string | null {
+  const vals = L(tgt)
+    .all()
+    .map((el) => getter(el, key));
   if (new Set(vals).size > 1) {
-    throw new Error(`${name} called on multiple elements with differing values for key "${key}"`);
+    throw new Error(
+      `${name} called on multiple elements with differing values for key "${key}"`
+    );
   }
   return vals[0] || null;
 }
@@ -312,7 +329,8 @@ L.get = function (tgt: Ltgt, key: Lkey): string | null {
   return _lget(tgt, key, getAttribute, `L.get`);
 } as Lget;
 L.get.cls = function (tgt: Ltgt, key: Lkey): string | null {
-  const hasClass = (el, k) => (el.className || ``).split(` `).includes(k) ? k : null;
+  const hasClass = (el, k) =>
+    (el.className || ``).split(` `).includes(k) ? k : null;
   return _lget(tgt, key, hasClass, `L.get.cls`);
 };
 L.get.sty = function (tgt: Ltgt, key: Lkey): string | null {
@@ -320,11 +338,19 @@ L.get.sty = function (tgt: Ltgt, key: Lkey): string | null {
   return _lget(tgt, key, getStyle, `L.get.sty`);
 };
 ///
-function _lset(tgt: Ltgt, key: Lkey, val: Lval, setter: Function, ...args: Loption[]): string {
+function _lset(
+  tgt: Ltgt,
+  key: Lkey,
+  val: Lval,
+  setter: Function,
+  ...args: Loption[]
+): string {
   // treat as no-op if val is null or undefined:
   if (!(val === undefined || val === null)) {
     val = val.toString();
-    L(tgt).all().forEach((el) => setter(el, key, val));
+    L.ani(tgt, ...args)
+      .all()
+      .forEach((el) => setter(el, key, val));
   }
   return val as string;
 }
@@ -336,13 +362,27 @@ L.set.cls = function (tgt: Ltgt, key: Lkey): string {
   const setClass = (el, k) => el.classlist.add(k);
   return _lset(tgt, key, true, setClass);
 };
-L.set.sty = function (tgt: Ltgt, key: Lkey, val: Lval, ...args: Loption[]): string {
-  const setStyle = (el, k, v) => el.style[k] = v;
+L.set.sty = function (
+  tgt: Ltgt,
+  key: Lkey,
+  val: Lval,
+  ...args: Loption[]
+): string {
+  const setStyle = (el, k, v) => (el.style[k] = v);
   return _lset(tgt, key, val, setStyle, ...args);
 };
 ///
-function _ldel(tgt: Ltgt, key: Lkey, checker: Function, deleter: Function, ...args: Loption[]): boolean {
-  return !!L(tgt).all().filter((el) => checker(el, key)).map((el) => deleter(el, key)).length;
+function _ldel(
+  tgt: Ltgt,
+  key: Lkey,
+  checker: Function,
+  deleter: Function,
+  ...args: Loption[]
+): boolean {
+  return !!L.ani(tgt, ...args)
+    .all()
+    .filter((el) => checker(el, key))
+    .map((el) => deleter(el, key)).length;
 }
 L.del = function (tgt: Ltgt, key: Lkey, ...args: Loption[]): boolean {
   const hasAttribute = (el, k) => el.hasAttribute(k);
@@ -356,41 +396,84 @@ L.del.cls = function (tgt: Ltgt, key: Lkey, ...args: Loption[]): boolean {
 };
 L.del.sty = function (tgt: Ltgt, key: Lkey, ...args: Loption[]): boolean {
   const hasStyle = (el) => !!el.style[key].length;
-  const delStyle = (el) => el.style[key] = ``;
+  const delStyle = (el) => (el.style[key] = ``);
   return _ldel(tgt, key, hasStyle, delStyle, ...args);
 };
 ///
-function _lcyc(tgt: Ltgt, key: Lkey, vals: Lval[], getter: Function, setter: Function, ...args: Loption[]): string {
+function _lcyc(
+  tgt: Ltgt,
+  key: Lkey,
+  vals: Lval[],
+  getter: Function,
+  setter: Function,
+  ...args: Loption[]
+): string {
   const l = L(tgt);
   vals = vals.map((v) => v.toString());
   const val = vals[(vals.indexOf(getter(l, key)) + 1) % vals.length];
   setter(l, key, val);
   return val as string;
 }
-L.cyc = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+L.cyc = function (
+  tgt: Ltgt,
+  key: Lkey,
+  vals: Lval[],
+  ...args: Loption[]
+): string {
   return _lcyc(tgt, key, vals, L.get, L.set, ...args);
 } as Lcyc;
-L.cyc.cls = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+L.cyc.cls = function (
+  tgt: Ltgt,
+  key: Lkey,
+  vals: Lval[],
+  ...args: Loption[]
+): string {
   return _lcyc(tgt, key, vals, L.get.cls, L.set.cls, ...args);
 };
-L.cyc.sty = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+L.cyc.sty = function (
+  tgt: Ltgt,
+  key: Lkey,
+  vals: Lval[],
+  ...args: Loption[]
+): string {
   return _lcyc(tgt, key, vals, L.get.sty, L.set.sty, ...args);
 };
 ///
-function _lrnd(tgt: Ltgt, key: Lkey, vals: Lval[], setter: Function, ...args: Loption[]): string {
+function _lrnd(
+  tgt: Ltgt,
+  key: Lkey,
+  vals: Lval[],
+  setter: Function,
+  ...args: Loption[]
+): string {
   const l = L(tgt);
   vals = vals.map((v) => v.toString());
   const val = vals[Math.floor(Math.random() * vals.length)];
   setter(l, key, val);
   return val as string;
 }
-L.rnd = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+L.rnd = function (
+  tgt: Ltgt,
+  key: Lkey,
+  vals: Lval[],
+  ...args: Loption[]
+): string {
   return _lrnd(tgt, key, vals, L.set, ...args);
 } as Lrnd;
-L.rnd.cls = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+L.rnd.cls = function (
+  tgt: Ltgt,
+  key: Lkey,
+  vals: Lval[],
+  ...args: Loption[]
+): string {
   return _lrnd(tgt, key, vals, L.set.cls, ...args);
 };
-L.rnd.sty = function (tgt: Ltgt, key: Lkey, vals: Lval[], ...args: Loption[]): string {
+L.rnd.sty = function (
+  tgt: Ltgt,
+  key: Lkey,
+  vals: Lval[],
+  ...args: Loption[]
+): string {
   return _lrnd(tgt, key, vals, L.set.sty, ...args);
 };
 ///
