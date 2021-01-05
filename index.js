@@ -104,12 +104,15 @@ function L(tgt) {
         all: function (requery) {
             if (requery === void 0) { requery = false; }
             if (requery || !l.elements.length) {
-                var res = void 0;
+                var res = tgt;
                 if (typeof tgt === "string") {
                     res = Array.from(document.body.querySelectorAll(tgt));
                 }
                 else if (typeof tgt.all === "function") {
-                    res = tgt.all(); // unwrap another L object
+                    var lres = tgt.all(); // unwrap another L object
+                    if (Array.isArray(lres)) {
+                        res = lres;
+                    }
                 }
                 l.elements = (!Array.isArray(res)
                     ? [res]
@@ -230,9 +233,10 @@ L.rem = function (tgt) {
         args[_i - 1] = arguments[_i];
     }
     // reverse so that later args override earlier args:
-    var lastBoolArg = __spreadArrays(args).reverse().filter(function (arg) { return typeof arg === "boolean"; })[0] || null;
-    var deleteElement = lastBoolArg === null ? false : lastBoolArg;
-    var showElement = lastBoolArg === null ? false : !lastBoolArg;
+    var boolArgs = __spreadArrays(args).reverse()
+        .filter(function (arg) { return typeof arg === "boolean"; });
+    var deleteElement = !boolArgs.length ? false : boolArgs[0];
+    var showElement = !boolArgs.length ? false : !boolArgs[0];
     var animation = _parseAnimationArgs.apply(void 0, args);
     var l = (_a = L(tgt)).ani.apply(_a, args);
     if (!l.animation) {

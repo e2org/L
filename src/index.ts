@@ -175,13 +175,16 @@ function L(tgt: Ltgt): Lobj {
     elements: [],
     all: (requery = false) => {
       if (requery || !l.elements.length) {
-        let res;
+        let res = tgt;
         if (typeof tgt === `string`) {
           res = (Array.from(
             document.body.querySelectorAll(tgt)
           ) as unknown) as HTMLElement[];
         } else if (typeof (tgt as Lobj).all === `function`) {
-          res = (tgt as Lobj).all(); // unwrap another L object
+          const lres = (tgt as Lobj).all(); // unwrap another L object
+          if (Array.isArray(lres)) {
+            res = lres;
+          }
         }
         l.elements = ((!Array.isArray(res)
           ? [res]
@@ -250,10 +253,11 @@ L.add = function (tgt: Ltgt | null, tagName: string, ...args: Loption[]): Lobj {
 ///
 L.rem = function (tgt: Ltgt, ...args: Loption[]): Lobj {
   // reverse so that later args override earlier args:
-  const lastBoolArg =
-    [...args].reverse().filter((arg) => typeof arg === `boolean`)[0] || null;
-  const deleteElement = lastBoolArg === null ? false : lastBoolArg;
-  const showElement = lastBoolArg === null ? false : !lastBoolArg;
+  const boolArgs = [...args]
+    .reverse()
+    .filter((arg) => typeof arg === `boolean`);
+  const deleteElement = !boolArgs.length ? false : boolArgs[0];
+  const showElement = !boolArgs.length ? false : !boolArgs[0];
   const animation = _parseAnimationArgs(...args);
   const l = L(tgt).ani(...args);
 

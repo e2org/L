@@ -1,8 +1,9 @@
 {
-  "name": "l-toolkit",
+  "name": "L",
   "version": "0.0.1",
   "description": "Death-Simple Web Prototyping Toolkit",
   "scripts": {
+    "start": "tsc --watch src/*.ts --outDir .",
     "build": "prettier --write src && tsc src/*.ts --outDir .",
     "reset": "rm -rf ./node_modules && rm -rf ./.cache && npm install"
   },
