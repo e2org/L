@@ -273,8 +273,6 @@ L.rem = function (tgt: Ltgt, ...args: Loption[]): Lobj {
     setTimeout(() => {
       if (deleteElement) {
         l.all().forEach((el) => el.parentNode.removeChild(el));
-      } else if (showElement) {
-        L.del.sty(l, `opacity`);
       }
     }, l.animation.durationMs);
   }

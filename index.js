@@ -254,9 +254,6 @@ L.rem = function (tgt) {
             if (deleteElement) {
                 l.all().forEach(function (el) { return el.parentNode.removeChild(el); });
             }
-            else if (showElement) {
-                L.del.sty(l, "opacity");
-            }
         }, l.animation.durationMs);
     }
     return l;
